@@ -535,12 +535,14 @@ function git_make_get_local_repo($project) {
   else if ($repo_exists) {
     // Repo exists. Update existing local repo.
     drush_print(sprintf("Checking %s for updates to %s\n", $url, $repo));
-    shell_exec(sprintf('cd %s; git pull', $repo));
+    $command = sprintf('cd %s; git pull', $repo);
+    _git_make_exec($command);
   }
   else {
     // Repo doesn't exist. Create repo.
     drush_print(sprintf('Cloning %s to %s...', $url, $repo));
-    shell_exec(sprintf('cd %s; git clone %s %s', $repos, $url, $name));
+    $command = sprintf('cd %s; git clone %s %s', $repos, $url, $name);
+    _git_make_exec($command);
     // TODO Add some error handling. E.g. if clone fails.
   }
 
@@ -548,8 +550,9 @@ function git_make_get_local_repo($project) {
   // bare repos, we need a local copy of whatever branch we're going to use.
   // This branch doesn't actually have to be checked out while we're pulling.
   // This just seems like the easiest way to handle all scenarios.
-  //    TODO $branch = git_make_get_branch($project);
-  //    shell_exec(sprintf('cd %s; git checkout %s;', $repos, $branch));
+  $branch = git_make_get_branch($project);
+  $command = sprintf('cd %s; git checkout %s;', $repo, $branch);
+  _git_make_exec($command);
  
   return $repo;
 }
@@ -640,7 +643,8 @@ function git_make_get_id($core, $project, $repo = FALSE) {
 function git_make_get_id_from_tag($repo, $tag) {
   $cd = "cd $repo";
   $get_id = "git rev-parse $tag";
-  $id = shell_exec("$cd; $get_id");
+  $command = "$cd; $get_id";
+  $id = _git_make_exec($command);
   return trim($id);
 }
 
@@ -658,7 +662,8 @@ function git_make_get_id_from_branch($repo, $branch) {
   $cd = "cd $repo";
   $checkout_branch = "git checkout $branch";
   $get_id = "git rev-parse HEAD";
-  $id = shell_exec("$cd; $checkout_branch; $get_id;");
+  $command = "$cd; $checkout_branch; $get_id;" ;
+  $id = _git_make_exec($command);
   return trim($id);
 }
 
@@ -689,17 +694,20 @@ function git_make_get_subtree($type, $info, $project) {
   // Get commit ID for project version.
   $git_subtree->commit_id = git_make_get_id($info['core'], $project, $repo);
 
-  if (!is_dir($build_path)) {
+
+  // CONTINUE HERE
+  //  - Something funny is going on with recursion. New docroot in themes.
+  //  - Why don't all modules get added?
+
+  if (!is_dir($prefix)) {
     // If the project doesn't exist in the repo yet, add it.
     // First, figure out what branch to use.
-    $git_subtree->branch = git_make_get_branch($info['core'], $project);
+    $git_subtree->branch = git_make_get_branch($project);
 
-    //  $git_subtree->branch = '' ; // TODO
-    //$result = $git_subtree->add();
-    $test = $git_subtree->add(TRUE);
-drush_print($test);
+    $command = $git_subtree->add();
+    _git_make_exec($command);
   }
-  if (is_dir($build_path)) {
+  if (is_dir($prefix)) {
     // TODO Add error handling. E.g. Path can exist but not be a subtree if someone
     //   ran drush make by itself or added the project manually.
     // git subtree pull to update repo.
@@ -749,17 +757,14 @@ function git_make_prefix($type, $project) {
 }
 
 /**
- * @param $core
- *  String. E.g. 7.x
- *
  * @param $project
  *  Array.
  *
  * @return
  *  String. Git branch.
  */
-function git_make_get_branch($core, $project) {
-  $branch = '';
+function git_make_get_branch($project) {
+  $core = $project['core'];
 
   if ($project['name'] == 'drupal') {
     $branch = $core;
@@ -779,4 +784,13 @@ function git_make_get_branch($core, $project) {
   }
 
   return $branch;
+}
+
+/**
+ * Execute all shell commands.
+ */
+function _git_make_exec($command) {
+  // TODO use drush_shell_exec here instead?
+  drush_log("Running:\n\t$command");
+  return shell_exec($command);
 }

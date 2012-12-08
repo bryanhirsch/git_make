@@ -1,7 +1,10 @@
 <?php
 /**
  * @file git_make.subtree.inc
- * 
+ */
+
+/**
+ * This class builds and returns git subtree commands to be executed by git_make.
  */
 class GitSubtree {
   public $prefix;
@@ -25,7 +28,7 @@ class GitSubtree {
    * @param $test
    *  Boolean. 
    */
-  public function add($test = FALSE) {
+  public function add() {
     $message = ($this->message) ? "--message=$message" : '';
     $squash = ($this->squash) ? "--squash" : '';
     $prefix = "--prefix=$this->prefix";
@@ -33,7 +36,7 @@ class GitSubtree {
     $branch = $this->branch;
 
     $statement = "git subtree add $message $squash $prefix $repo $branch";
-    return $this->exec($statement, $test);
+    return $statement;
   }
 
   /**
@@ -49,15 +52,5 @@ class GitSubtree {
   // function push() {}
   // function split() {}
 
-
-  function exec($command, $test = FALSE) {
-    // TODO add cd to top-level first / $this->root;
-    if (!$test) {
-      return shell_exec($command);
-    }
-    else {
-      return 'TESTING: ' . $command;
-    }
-  }
 
 }
