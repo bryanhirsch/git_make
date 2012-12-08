@@ -694,11 +694,6 @@ function git_make_get_subtree($type, $info, $project) {
   // Get commit ID for project version.
   $git_subtree->commit_id = git_make_get_id($info['core'], $project, $repo);
 
-
-  // CONTINUE HERE
-  //  - Something funny is going on with recursion. New docroot in themes.
-  //  - Why don't all modules get added?
-
   if (!is_dir($prefix)) {
     // If the project doesn't exist in the repo yet, add it.
     // First, figure out what branch to use.
@@ -708,6 +703,7 @@ function git_make_get_subtree($type, $info, $project) {
     _git_make_exec($command);
   }
   if (is_dir($prefix)) {
+
     // TODO Add error handling. E.g. Path can exist but not be a subtree if someone
     //   ran drush make by itself or added the project manually.
     // git subtree pull to update repo.
