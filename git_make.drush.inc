@@ -3,6 +3,7 @@
  * @file
  * Provide Drush integration for release building and dependency building.
  */
+require_once('git_make.subtree.inc');
 
 /**
  * Implements hook_drush_help().
@@ -676,23 +677,27 @@ function git_make_get_id_from_branch($repo, $branch) {
 function git_make_get_subtree($type, $info, $project) {
   // Determine subtree repo "prefix".
   $prefix = git_make_prefix($type, $project);
-  drush_print($prefix);
+  $git_subtree = new GitSubtree($prefix);
 
   // TODO
   // Recursion(?).
 
   // Get path to local copy of the project's git repo. Clone or update if needed.
-  $repo = git_make_get_local_repo($project);
+  $git_subtree->repo = git_make_get_local_repo($project);
 
   // Get commit ID for project version.
-  $id = git_make_get_id($info['core'], $project, $repo);
-
-  // CONTINUE HERE. WE'VE GOT THE IDs FOR CORE AND CONTRIB.
+  $git_subtree->commit_id = git_make_get_id($info['core'], $project, $repo);
 
   if (!is_dir($build_path)) {
     // If the project doesn't exist in the repo yet, add it.
-      // Figure out what branch to add on.
-      // git_make_git_subtree_add($branch);
+    // First, figure out what branch to use.
+    //$git_subtree->branch = 
+      // git_make_subtree($branch);
+
+    //  $git_subtree->branch = '' ; // TODO
+    //$result = $git_subtree->add();
+    $test = $git_subtree->add(TRUE);
+drush_print($test);
   }
   if (is_dir($build_path)) {
     // TODO Add error handling. E.g. Path can exist but not be a subtree if someone
@@ -742,8 +747,3 @@ function git_make_prefix($type, $project) {
 
   return $prefix;
 }
-
-//-------------------------------//
-// Internal functions            //
-//-------------------------------//
-
