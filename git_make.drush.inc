@@ -272,6 +272,7 @@ drush_print(print_r($project));
   // "Core is built in place, rather than using make-process."
   if (isset($projects['core'])) {
     git_make_get_subtree('core', $info, $projects['core']['drupal']);
+// drush_print(print_r($projects['core']['drupal']));
     // TODO
     // If there are patches download and apply patches.
   }
@@ -481,17 +482,17 @@ function git_make_subtree_pull($project) {
  *  Boolean
  */
 function git_make_local_repo_exists($repo) {
-  drush_print(sprintf('Checking for %s', $repo));
+  drush_log(sprintf('Checking for %s', $repo));
 
   $is_directory = is_dir($repo);
   $is_repo = is_dir("$repo/.git");
 
   if (!$is_directory && !$is_repo) {
-    drush_print(sprintf('Repo does not exist: %s', $repo));
+    drush_log(sprintf('Repo does not exist: %s', $repo));
     return FALSE;  
   } 
 
-  drush_print(sprintf('Repo exists: %s', $repo));
+  drush_log(sprintf('Repo exists: %s', $repo));
 
   return TRUE;
 }
@@ -691,8 +692,7 @@ function git_make_get_subtree($type, $info, $project) {
   if (!is_dir($build_path)) {
     // If the project doesn't exist in the repo yet, add it.
     // First, figure out what branch to use.
-    //$git_subtree->branch = 
-      // git_make_subtree($branch);
+    $git_subtree->branch = git_make_get_branch($info['core'], $project);
 
     //  $git_subtree->branch = '' ; // TODO
     //$result = $git_subtree->add();
@@ -746,4 +746,37 @@ function git_make_prefix($type, $project) {
   }
 
   return $prefix;
+}
+
+/**
+ * @param $core
+ *  String. E.g. 7.x
+ *
+ * @param $project
+ *  Array.
+ *
+ * @return
+ *  String. Git branch.
+ */
+function git_make_get_branch($core, $project) {
+  $branch = '';
+
+  if ($project['name'] == 'drupal') {
+    $branch = $core;
+  }
+  else if (isset($project['download']['branch'])) {
+    $branch = $project['download']['branch'];
+  }
+  else if (isset($project['version'])) {
+    // Turn 1.15 into 1.x
+    $project_parts = explode('.', $project['version']);
+    $project_version = $project_parts[0] . '.x';
+    // Branch!...
+    $branch = sprintf('%s-%s', $core, $project_version);
+  }
+  else {
+    $branch = 'master';
+  }
+
+  return $branch;
 }
