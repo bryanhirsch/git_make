@@ -704,6 +704,8 @@ function git_make_get_subtree($type, $info, $project) {
   }
   if (is_dir($prefix)) {
 
+  // CONTINUE HERE
+
     // TODO Add error handling. E.g. Path can exist but not be a subtree if someone
     //   ran drush make by itself or added the project manually.
     // git subtree pull to update repo.
