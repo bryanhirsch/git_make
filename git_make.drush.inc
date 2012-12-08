@@ -737,19 +737,27 @@ function git_make_prefix($type, $project) {
   $build_path = $project['build_path'];
   $prefix = $build_path;
 
+  // Build contrib path.
   if ($type == 'contrib') {
-    // E.g. $prefix = docroot/sites/all
-    $prefix .= '/' . $project['contrib_destination']; 
+    if ($project['type'] != 'profile') {
+      // E.g. $prefix = docroot/sites/all
+      $prefix .= '/' . $project['contrib_destination'];
+    }
     // E.g. $prefix = docroot/sites/all/modules
+    // Or $prefix = docroot/profiles
     //   TODO Decide how to handle 'libraries' type here...
     $prefix .= '/' . $project['type'] . 's';
     if ($subdir = $project['subdir']) {
       // E.g. $prefix = docroot/sites/all/modules/contrib
       $prefix .= '/' . $subdir;
     }
+
     if ($directory_name = $project['directory_name']) {
       // E.g. $prefix = docroot/sites/all/modules/contrib/directory_name
       $prefix .= '/' . $directory_name;
+    }
+    else {
+      $prefix .= '/' . $project['name'];
     }
   }
 
