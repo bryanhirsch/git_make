@@ -683,33 +683,41 @@ function git_make_get_id_from_branch($repo, $branch) {
 function git_make_get_subtree($type, $info, $project) {
   // Determine subtree repo "prefix".
   $prefix = git_make_prefix($type, $project);
-  $git_subtree = new GitSubtree($prefix);
+
+  // Get path to local copy of the project's git repo. Clone or update if needed.
+  $repo = git_make_get_local_repo($project);
+
+  // Get commit ID for project version.
+  $commit_id = git_make_get_id($info['core'], $project, $repo);
+  
+  // Figure out what branch to use.
+  $branch = git_make_get_branch($project);
+  
+  // Set commit message.
+  $message = sprintf('Committed by drush git-make %s', date('Y-m-d, H:i', time()));
+  
+  // TODO Add a drush option here to opt out of --squash.
+  $squash = TRUE;
+  
+  // Top-level directory in git repo.
+  $root = getcwd();
+
+  $git_subtree = new GitSubtree($prefix, $repo, $commit_id, $message, $squash, 
+                                $branch, $root);
 
   // TODO
   // Recursion(?).
 
-  // Get path to local copy of the project's git repo. Clone or update if needed.
-  $git_subtree->repo = git_make_get_local_repo($project);
-
-  // Get commit ID for project version.
-  $git_subtree->commit_id = git_make_get_id($info['core'], $project, $repo);
-
   if (!is_dir($prefix)) {
     // If the project doesn't exist in the repo yet, add it.
-    // First, figure out what branch to use.
-    $git_subtree->branch = git_make_get_branch($project);
-
     $command = $git_subtree->add();
     _git_make_exec($command);
   }
   if (is_dir($prefix)) {
-
-  // CONTINUE HERE
-
     // TODO Add error handling. E.g. Path can exist but not be a subtree if someone
     //   ran drush make by itself or added the project manually.
-    // git subtree pull to update repo.
-      // WORK IN PROGRESS git_make_subtree_pull($project);
+    $command = $git_subtree->pull();
+    _git_make_exec($command);
   }
 
   // git subree merge to specified release.
