@@ -34,7 +34,7 @@ class GitSubtree {
   }
 
   /**
-   * gets ================================================================================================= 
+   * gets ========================================================================
    */
   public function getPrefix() { if ($this->prefix) { return $this->prefix; } else { return ''; }}
   public function getRepo() { if ($this->repo) { return $this->repo; } else { return ''; }}
@@ -45,7 +45,7 @@ class GitSubtree {
   public function getRoot() { if ($this->root) { return $this->root; } else { return ''; }}
 
   /**
-   * sets ================================================================================================= 
+   * sets ========================================================================
    */
   public function setPrefix($prefix) { $this->prefix = $prefix; }
   public function setRepo($repo) { $this->repo = $repo; }
@@ -56,15 +56,36 @@ class GitSubtree {
   public function setRoot($root) { $this->root = $root; }
 
   /**
-   * Execute git subtree add.
-   *
-   * @param $test
-   *  Boolean. 
+   * @return string
+   *  Custom commit message.
+   */
+  public function message() {
+   return ($this->getMessage()) ? sprintf('--message="%s"', $this->message) : '';
+  }
+
+  /**
+   * @return string
+   *  Squash flag.
+   */
+  public function squash() {
+    return ($this->getSquash()) ? '--squash' : '';  
+  }
+
+  /**
+   * @return string
+   *  Prefix flag.
+   */
+  public function prefix() {
+    return sprintf('--prefix="%s"', $this->getPrefix());
+  }
+
+  /**
+   * git subtree add
    */
   public function add() {
-    $message = ($this->getMessage()) ? "--message=$message" : '';
-    $squash = ($this->getSquash()) ? "--squash" : '';
-    $prefix = "--prefix=" . $this->getPrefix;
+    $message = $this->message();
+    $squash = $this->squash();
+    $prefix = $this->prefix();
     $repo = $this->getRepo();
     $branch = $this->getBranch();
 
