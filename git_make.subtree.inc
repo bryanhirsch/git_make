@@ -7,15 +7,15 @@
  * This class builds and returns git subtree commands to be executed by git_make.
  */
 class GitSubtree {
-  public $prefix;
-  public $repo;
-  public $commit_id;
-  public $message;
-  public $squash;
-  public $branch;
-  public $root;
+  private $prefix;
+  private $repo;
+  private $commit_id;
+  private $message;
+  private $squash;
+  private $branch;
+  private $root;
 
-  public function __construct($prefix, $commit = FALSE, $message = FALSE, $squash = TRUE, $branch = '') {
+  private function __construct($prefix, $commit = FALSE, $message = FALSE, $squash = TRUE, $branch = '') {
     $this->prefix = $prefix;
     $this->commit = $commit;
     $this->message = $message;
@@ -28,7 +28,7 @@ class GitSubtree {
    * @param $test
    *  Boolean. 
    */
-  public function add() {
+  private function add() {
     $message = ($this->message) ? "--message=$message" : '';
     $squash = ($this->squash) ? "--squash" : '';
     $prefix = "--prefix=$this->prefix";
@@ -42,12 +42,12 @@ class GitSubtree {
   /**
    * Execute git subtree pull.
    */
-  function pull() {}
+  private function pull() {}
 
   /**
    * Execute git subtree merge.
    */
-  function merge() {}
+  private function merge() {}
 
   // function push() {}
   // function split() {}
