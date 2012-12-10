@@ -31,6 +31,7 @@ function git_make_drush_command() {
     ),
     'options' => array(
       'local' => 'Use local ("cached") copy of repos only.',
+      'print-only' => 'Print commands, do not execute them.',
     ),
     'examples' => array(
       'drush git-make build-petition.make docroot' => '',
@@ -530,17 +531,17 @@ function git_make_get_local_repo($project) {
 
   if ($repo_exists && $use_local) {
     // Use local checkout of repo as-is. Do nothing here.
-    drush_print(sprintf("Using local repo: %s\n", $repo));
+    drush_log(sprintf("Using local repo: %s\n", $repo));
   }
   else if ($repo_exists) {
     // Repo exists. Update existing local repo.
-    drush_print(sprintf("Checking %s for updates to %s\n", $url, $repo));
+    drush_log(sprintf("Checking %s for updates to %s\n", $url, $repo));
     $command = sprintf('cd %s; git pull', $repo);
     _git_make_exec($command);
   }
   else {
     // Repo doesn't exist. Create repo.
-    drush_print(sprintf('Cloning %s to %s...', $url, $repo));
+    drush_log(sprintf('Cloning %s to %s...', $url, $repo));
     $command = sprintf('cd %s; git clone %s %s', $repos, $url, $name);
     _git_make_exec($command);
     // TODO Add some error handling. E.g. if clone fails.
@@ -805,6 +806,11 @@ function git_make_get_branch($project) {
  */
 function _git_make_exec($command) {
   // TODO use drush_shell_exec here instead?
-  drush_log("Running:\n\t$command");
-  return shell_exec($command);
+  drush_log("Running: $command");
+  if (drush_get_option('print-only')) {
+    return drush_print($command);
+  }
+  else {
+    return shell_exec($command);
+  }
 }
