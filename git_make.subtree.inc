@@ -15,7 +15,7 @@ class GitSubtree {
   private $branch;
   private $root;
 
-  private function __construct($prefix,
+  public function __construct($prefix,
                                $repo = '',
                                $commit_id = '',
                                $message = '',
@@ -36,24 +36,24 @@ class GitSubtree {
   /**
    * gets ================================================================================================= 
    */
-  private function getPrefix() { if ($this->prefix) { return $this->prefix; } else { return ''; }}
-  private function getRepo() { if ($this->repo) { return $this->repo; } else { return ''; }}
-  private function getCommit_id() { if ($this->commit_id) { return $this->commit_id; } else { return ''; }}
-  private function getMessage() { if ($this->message) { return $this->message; } else { return ''; }}
-  private function getSquash() { if ($this->squash) { return $this->squash; } else { return ''; }}
-  private function getBranch() { if ($this->branch) { return $this->branch; } else { return ''; }}
-  private function getRoot() { if ($this->root) { return $this->root; } else { return ''; }}
+  public function getPrefix() { if ($this->prefix) { return $this->prefix; } else { return ''; }}
+  public function getRepo() { if ($this->repo) { return $this->repo; } else { return ''; }}
+  public function getCommit_id() { if ($this->commit_id) { return $this->commit_id; } else { return ''; }}
+  public function getMessage() { if ($this->message) { return $this->message; } else { return ''; }}
+  public function getSquash() { if ($this->squash) { return $this->squash; } else { return ''; }}
+  public function getBranch() { if ($this->branch) { return $this->branch; } else { return ''; }}
+  public function getRoot() { if ($this->root) { return $this->root; } else { return ''; }}
 
   /**
    * sets ================================================================================================= 
    */
-  private function setPrefix($prefix) { $this->prefix = $prefix; }
-  private function setRepo($repo) { $this->repo = $repo; }
-  private function setCommit_id($commit_id) { $this->commit_id = $commit_id; }
-  private function setMessage($message) { $this->message = $message; }
-  private function setSquash($squash) { $this->squash = $squash; }
-  private function setBranch($branch) { $this->branch = $branch; }
-  private function setRoot($root) { $this->root = $root; }
+  public function setPrefix($prefix) { $this->prefix = $prefix; }
+  public function setRepo($repo) { $this->repo = $repo; }
+  public function setCommit_id($commit_id) { $this->commit_id = $commit_id; }
+  public function setMessage($message) { $this->message = $message; }
+  public function setSquash($squash) { $this->squash = $squash; }
+  public function setBranch($branch) { $this->branch = $branch; }
+  public function setRoot($root) { $this->root = $root; }
 
   /**
    * Execute git subtree add.
@@ -61,7 +61,7 @@ class GitSubtree {
    * @param $test
    *  Boolean. 
    */
-  private function add() {
+  public function add() {
     $message = ($this->getMessage()) ? "--message=$message" : '';
     $squash = ($this->getSquash()) ? "--squash" : '';
     $prefix = "--prefix=" . $this->getPrefix;
@@ -75,14 +75,14 @@ class GitSubtree {
   /**
    * Execute git subtree pull.
    */
-  private function pull() {
+  public function pull() {
     
   }
 
   /**
    * Execute git subtree merge.
    */
-  private function merge() {}
+  public function merge() {}
 
   // function push() {}
   // function split() {}
