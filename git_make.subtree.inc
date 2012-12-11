@@ -56,10 +56,23 @@ class GitSubtree {
   public function setRoot($root) { $this->root = $root; }
 
   /**
+   * @param string $command
+   *  (Optional) git-subtree command being executed.
+   *
    * @return string
    *  Custom commit message.
    */
-  public function message() {
+  public function message($command = FALSE) {
+    if ($command) {
+      if ($message = $this->getMessage()) {
+        $message = sprintf("%s\n\tgit subtree %s", $message, $command);
+      }
+      else {
+        $message = "git subtree $command";
+      }
+      $this->setMessage($message);
+    }
+
    return ($this->getMessage()) ? sprintf('--message="%s"', $this->message) : '';
   }
 
@@ -83,13 +96,13 @@ class GitSubtree {
    * git subtree add
    */
   public function add() {
-    $message = $this->message();
+    $message = $this->message('add');
     $squash = $this->squash();
     $prefix = $this->prefix();
     $repo = $this->getRepo();
     $branch = $this->getBranch();
 
-    $statement = "git subtree add $message $squash $prefix $repo $branch";
+    $statement = sprintf('git subtree add %s %s %s %s %s', $message, $squash, $prefix, $repo, $branch);
     return $statement;
   }
 
@@ -97,13 +110,28 @@ class GitSubtree {
    * Execute git subtree pull.
    */
   public function pull() {
-    
+    $message = $this->message('pull');
+    $squash = $this->squash();
+    $prefix = $this->prefix();
+    $repo = $this->getRepo();
+    $branch = $this->getBranch();
+
+    $statement = sprintf('git subtree pull %s %s %s %s %s', $message, $squash, $prefix, $repo, $branch);
+    return $statement;
   }
 
   /**
    * Execute git subtree merge.
    */
-  public function merge() {}
+  public function merge() {
+    $message = $this->message('merge');
+    $squash = $this->squash();
+    $prefix = $this->prefix();
+    $commit = $this->getCommit_id();
+
+    $statement = sprintf('git subtree merge %s %s %s %s', $message, $squash, $prefix, $commit);
+    return $statement;
+  }
 
   // function push() {}
   // function split() {}
