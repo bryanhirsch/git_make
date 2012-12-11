@@ -549,8 +549,10 @@ function git_make_get_local_repo($project) {
   // bare repos, we need a local copy of whatever branch we're going to use.
   // This branch doesn't actually have to be checked out while we're pulling.
   // This just seems like the easiest way to handle all scenarios.
+  // While we're here do some garbage collection for good measure.
+  // @todo Add an option to skip gc;
   $branch = git_make_get_branch($project);
-  $command = sprintf('cd %s; git checkout %s;', $repo, $branch);
+  $command = sprintf('cd %s; git checkout %s; git gc;', $repo, $branch);
   _git_make_exec($command);
  
   return $repo;
@@ -709,11 +711,13 @@ function git_make_get_subtree($type, $info, $project) {
   }
 
   // Set a new commit message, for subtree merge commits.
+  $tag = git_make_get_tag($project);
   $message = sprintf('drush git-make executed: %s', date('Y-m-d, H:i', time()));
-  $message .= sprintf("\n\ttag: %s", git_make_get_tag($project));
+  $message .= sprintf("\n\ttag: %s", $tag);
   $git_subtree->setMessage($message);
   $command = $git_subtree->merge();
   _git_make_exec($command);
+  drush_log("Merged project " . $project['name'] . " (version $tag)");
 
   // Do Git garbage collection, otherwise this repo can become pretty slow.
   // @todo Add an option to ignore garbage collection.
