@@ -128,8 +128,6 @@ function git_make_make_projects($recursion = FALSE, $contrib_destination, $info,
 
   // TODO parameterize "docroot".
 
-// drush_print(print_r($info));
-
   $projects = array();
 
   $translations = array();
@@ -576,28 +574,23 @@ function git_make_get_local_repo($project) {
 function git_make_get_id($core, $project, $repo = FALSE) {
   $id = '';
 
-  $version = (isset($project['version'])) ? $project['version'] : FALSE;
-  $tag = (isset($project['download']['tag'])) ? $project['download']['tag'] : FALSE;
-  $revision = (isset($project['download']['revision'])) ? $project['download']['revision'] : FALSE;
-  $branch = (isset($project['download']['branch'])) ? $project['download']['branch'] : FALSE;
-  $type = (isset($project['download']['type'])) ? $project['download']['type'] : FALSE;
-
   // Get path to local repo if we don't already know it.
   if (!$repo) {
     $repo = git_make_get_local_repo($project);
   }
 
   // If make file designates a git commit ID, that's all we need.
+  $revision = (isset($project['download']['revision'])) ? $project['download']['revision'] : FALSE;
   if ($type == 'git' && $revision) {
     $id = $revision;
   }
   // Get the commit ID based on the tag specified in the make file.
-  else if ($tag) {
+  else if ($tag = git_make_get_tag($project)) {
     $id = git_make_get_id_from_tag($repo, $tag);
   }
   // Get the commit ID based on the release version specified in
   // the make file.
-  else if ($version) {
+  else if ($version = git_make_get_version($project)) {
     // If the project is following Drupal tagging conventions we should
     // be able to figure out the tag we're looking for.
     $tag = ($project['name'] == 'drupal') ? $version : sprintf('%s-%s', $core, $version);
@@ -605,23 +598,15 @@ function git_make_get_id($core, $project, $repo = FALSE) {
   }
   // No version is specified in the make file, but a branch is specified,
   // use that.
-  else if ($branch) {
+  else if ($branch = git_make_get_branch($project)) {
     // Find out the commit ID at the tip of $branch.
     $id = git_make_get_id_from_branch($repo, $branch);
-
-     // Add a note to the
-    // commit mesage that this is where we're pulling in $branch.
-    // TODO    
   }
-  // Try to get $id based on recommended version on drupal.org.
   /*
+  // Try to get $id based on recommended version on drupal.org.
   else if ($version = git_make_get_recommended_version()) {
     // TODO
   }
-  // */
-  // The make file doesn't specify a version or branch and drupal.org
-  // doesn't have a recommended version either. Use the tip of the
-  // checked out local branch and hope for the best.
   /*
   else {
    // TODO 
@@ -645,8 +630,8 @@ function git_make_get_id_from_tag($repo, $tag) {
   $cd = "cd $repo";
   $get_id = "git rev-parse $tag";
   $command = "$cd; $get_id";
-  $ignore_print_only = TRUE;
-  $id = _git_make_exec($command, $ignore_print_only);
+  // TRUE tells drush to run this even when user passes 'print-only' option.
+  $id = _git_make_exec($command, TRUE);
   return trim($id);
 }
 
@@ -665,7 +650,8 @@ function git_make_get_id_from_branch($repo, $branch) {
   $checkout_branch = "git checkout $branch";
   $get_id = "git rev-parse HEAD";
   $command = "$cd; $checkout_branch; $get_id;" ;
-  $id = _git_make_exec($command);
+  // TRUE tells drush to run this even when user passes 'print-only' option.
+  $id = _git_make_exec($command, TRUE);
   return trim($id);
 }
 
@@ -724,15 +710,16 @@ function git_make_get_subtree($type, $info, $project) {
 
   // Set a new commit message, for subtree merge commits.
   $message = sprintf('drush git-make executed: %s', date('Y-m-d, H:i', time()));
+  $message .= sprintf("\n\ttag: %s", git_make_get_tag($project));
   $git_subtree->setMessage($message);
   $command = $git_subtree->merge();
   _git_make_exec($command);
 
   // Do Git garbage collection, otherwise this repo can become pretty slow.
   // @todo Add an option to ignore garbage collection.
+  // @todo Should we manage garbage collection in ~/.drush-repos/* ?
   $command = 'git gc';
   _git_make_exec($command);
-
 
 }
 
@@ -793,10 +780,10 @@ function git_make_get_branch($project) {
   if ($project['name'] == 'drupal') {
     $branch = $core;
   }
-  else if (isset($project['download']['branch'])) {
+  else if (!empty($project['download']['branch'])) {
     $branch = $project['download']['branch'];
   }
-  else if (isset($project['version'])) {
+  else if (!empty($project['version'])) {
     // Turn 1.15 into 1.x
     $project_parts = explode('.', $project['version']);
     $project_version = $project_parts[0] . '.x';
@@ -804,6 +791,8 @@ function git_make_get_branch($project) {
     $branch = sprintf('%s-%s', $core, $project_version);
   }
   else {
+    drush_log("I couldn't figure out what branch to use, so I'm using master. "
+            . "Hope this works.");
     $branch = 'master';
   }
 
@@ -835,4 +824,41 @@ function _git_make_exec($command, $ignore_print_only = FALSE) {
     drush_log("Running: $command");
     return shell_exec($command);
   }
+}
+
+/**
+ * @param $project
+ *  Array.
+ *
+ * @return string
+ *   Project version. E.g. 5.1 for Zen 7.x-5.1.
+ *
+ * @see git_make_get_tag
+ */
+function git_make_get_version($project) {
+  return (!empty($project['version'])) ? $project['version'] : FALSE;
+}
+
+/**
+ * Get git tag for project.
+ *
+ * @param $project
+ *  Array.
+ *
+ * @return $tag
+ *  String. Git tag or FALSE.
+ */
+function git_make_get_tag($project) {
+  $tag = FALSE;
+
+  // If tag is explicitly named in the make file, that's all we need.
+  if (isset($project['download']['tag'])) {
+    $tag = $project['download']['tag'];
+  }
+  // If a version like 5.1 is given for a project like Zen 7.x-5.1, build the tag.
+  else if ($version = git_make_get_version($project)) {
+    $tag = ($project['name'] == 'drupal') ? $version : sprintf('%s-%s', $project['core'], $version);
+  }
+
+  return $tag;
 }
