@@ -631,7 +631,7 @@ function git_make_get_id($core, $project, $repo = FALSE) {
 function git_make_get_id_from_tag($repo, $tag) {
   $cd = "cd $repo";
   $get_id = "git rev-parse $tag";
-  $command = "$cd; $get_id";
+  $command = "$cd; $get_id;";
   // TRUE tells drush to run this even when user passes 'print-only' option.
   $id = _git_make_exec($command, TRUE);
   return trim($id);
@@ -702,11 +702,19 @@ function git_make_get_subtree($type, $info, $project) {
     // If the project doesn't exist in the repo yet, add it.
     $command = $git_subtree->add();
     _git_make_exec($command);
+
+    // Garbage collection.
+    $command = 'git gc';
+    _git_make_exec($command);
   }
   if (is_dir($prefix)) {
     // TODO Add error handling. E.g. Path can exist but not be a subtree if someone
     //   ran drush make by itself or added the project manually.
     $command = $git_subtree->pull();
+    _git_make_exec($command);
+
+    // Garbage collection.
+    $command = 'git gc';
     _git_make_exec($command);
   }
 
