@@ -645,7 +645,8 @@ function git_make_get_id_from_tag($repo, $tag) {
   $cd = "cd $repo";
   $get_id = "git rev-parse $tag";
   $command = "$cd; $get_id";
-  $id = _git_make_exec($command);
+  $ignore_print_only = TRUE;
+  $id = _git_make_exec($command, $ignore_print_only);
   return trim($id);
 }
 
@@ -695,7 +696,7 @@ function git_make_get_subtree($type, $info, $project) {
   $branch = git_make_get_branch($project);
   
   // Set commit message.
-  $message = sprintf('Committed by drush git-make %s', date('Y-m-d, H:i', time()));
+  $message = sprintf('drush git-make executed: %s', date('Y-m-d, H:i', time()));
   
   // TODO Add a drush option here to opt out of --squash.
   $squash = TRUE;
@@ -721,9 +722,17 @@ function git_make_get_subtree($type, $info, $project) {
     _git_make_exec($command);
   }
 
-  // git subree merge to specified release.
-  // git subtree merge $tag
-    // git make_git_subtree_merge();
+  // Set a new commit message, for subtree merge commits.
+  $message = sprintf('drush git-make executed: %s', date('Y-m-d, H:i', time()));
+  $git_subtree->setMessage($message);
+  $command = $git_subtree->merge();
+  _git_make_exec($command);
+
+  // Do Git garbage collection, otherwise this repo can become pretty slow.
+  // @todo Add an option to ignore garbage collection.
+  $command = 'git gc';
+  _git_make_exec($command);
+
 
 }
 
@@ -803,14 +812,27 @@ function git_make_get_branch($project) {
 
 /**
  * Execute all shell commands.
+ *
+ * @param boolean $ignore_print_only
+ *  Ignore 'print-only' command. This should only be used for shell_exec commands
+ *  that do NOT change anything. E.g. The git rev-parse command needs to be 
+ *  executed to get commit IDs and return working commands when print-only runs.
  */
-function _git_make_exec($command) {
-  // TODO use drush_shell_exec here instead?
-  drush_log("Running: $command");
-  if (drush_get_option('print-only')) {
+function _git_make_exec($command, $ignore_print_only = FALSE) {
+  if (drush_get_option('print-only') && !$ignore_print_only) {
     return drush_print($command);
   }
   else {
+
+    // TODO Add error handling. E.g. detect 'error' and 'fatal' like this...
+    /*
+    error: pathspec '7.x-.x' did not match any file(s) known to git.
+    fatal: Couldn't find remote ref 7.x-.x
+    fatal: The remote end hung up unexpectedly
+    // */
+
+    // TODO use drush_shell_exec here instead?
+    drush_log("Running: $command");
     return shell_exec($command);
   }
 }
