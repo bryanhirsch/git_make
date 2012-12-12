@@ -54,7 +54,7 @@ function drush_git_make($makefile, $build_path = 'docroot') {
   $info = make_parse_info_file($makefile);
 
   // TODO Make an option for building site like this, with all
-  // prefixes pointing to project/* rather than storing everything 
+  // prefixes pointing to project/* rather than storing everything
   // inside docroot and getting tangled up with nested projects.
    // projects/drupal
    // projects/x
@@ -81,7 +81,7 @@ function drush_git_make($makefile, $build_path = 'docroot') {
   $include_only = array(
     'projects' => array_filter(drush_get_option_list('projects')),
     'libraries' => array_filter(drush_get_option_list('libraries')),
-  );  
+  );
   $info = make_prune_info_file($info, $include_only);
   // */
 
@@ -98,7 +98,7 @@ function drush_git_make($makefile, $build_path = 'docroot') {
     /*
     if (drush_get_option('prepare-install')) {
       make_prepare_install($build_path);
-    }   
+    }
     // */
   }
 
@@ -517,8 +517,8 @@ function git_make_local_repo_exists($repo) {
 
   if (!$is_directory && !$is_repo) {
     drush_log(sprintf('Repo does not exist: %s', $repo));
-    return FALSE;  
-  } 
+    return FALSE;
+  }
 
   drush_log(sprintf('Repo exists: %s', $repo));
 
@@ -583,7 +583,7 @@ function git_make_get_local_repo($project) {
   $branch = git_make_get_branch($project);
   $command = sprintf('cd %s; git checkout %s; git gc;', $repo, $branch);
   _git_make_exec($command);
- 
+
   return $repo;
 }
 
@@ -640,10 +640,10 @@ function git_make_get_id($core, $project, $repo = FALSE) {
   }
   /*
   else {
-   // TODO 
+   // TODO
   }
   // */
-  
+
   return $id;
 }
 
@@ -708,20 +708,20 @@ function git_make_get_subtree($type, $info, $project) {
 
   // Get commit ID for project version.
   $commit_id = git_make_get_id($info['core'], $project, $repo);
-  
+
   // Figure out what branch to use.
   $branch = git_make_get_branch($project);
-  
+
   // Set commit message.
   $message = sprintf('drush git-make executed: %s', date('Y-m-d, H:i', time()));
-  
+
   // TODO Add a drush option here to opt out of --squash.
   $squash = TRUE;
-  
+
   // Top-level directory in git repo.
   $root = getcwd();
 
-  $git_subtree = new GitSubtree($prefix, $repo, $commit_id, $message, $squash, 
+  $git_subtree = new GitSubtree($prefix, $repo, $commit_id, $message, $squash,
                                 $branch, $root);
 
   // TODO
@@ -861,7 +861,7 @@ function git_make_get_branch($project) {
  *
  * @param boolean $ignore_print_only
  *  Ignore 'print-only' command. This should only be used for shell_exec commands
- *  that do NOT change anything. E.g. The git rev-parse command needs to be 
+ *  that do NOT change anything. E.g. The git rev-parse command needs to be
  *  executed to get commit IDs and return working commands when print-only runs.
  */
 function _git_make_exec($command, $ignore_print_only = FALSE) {
@@ -930,7 +930,7 @@ function git_make_get_tag($project) {
  * @param $project
  *  Array. The project for which we're getting a subtree.
  */
-function git_make_checkout_index($type, $info, $project) { 
+function git_make_checkout_index($type, $info, $project) {
   $commands = array();
 
   // Get path to local copy of the project's git repo. Clone or update if needed.
@@ -940,14 +940,14 @@ function git_make_checkout_index($type, $info, $project) {
   if (!$tag = git_make_get_tag($project)) {
     $commit_id = git_make_get_id($info['core'], $project, $repo);
   }
-  
+
   // Set commit message.
   $timestamp = time();
-  $message = sprintf('drush git-make updated %s to %s, %s', 
+  $message = sprintf('drush git-make updated %s to %s, %s',
                        $project['name'],
                        ($tag) ? $tag : $commit_id,
                        date('Y-m-d, H:i', $timestamp));
-  
+
   // Top-level directory in git repo.
   $root = getcwd();
 
@@ -972,9 +972,9 @@ function git_make_checkout_index($type, $info, $project) {
                 . "version = %s\n"
                 . "project = %s\n"
                 . "datestamp =  %s\n",
-                date('Y-m-d', $timestamp), 
+                date('Y-m-d', $timestamp),
                 ($tag) ? $tag : $commit_id,
-                $project['name'], 
+                $project['name'],
                 $timestamp);
   $commands[] = sprintf('echo "%s" >> %s/%s/%s.info', $text, $root, $prefix, $project['name']);
 
@@ -994,14 +994,14 @@ function git_make_checkout_index($type, $info, $project) {
 
 /**
  * @param array $project
- * 
+ *
  * @return boolean
  */
 function git_make_download_type_is_subtree($project) {
   if (!empty($project['download']) && $project['download']['type'] == 'git-subtree') {
-    return TRUE;  
-  }  
+    return TRUE;
+  }
   else {
-    return FALSE;  
+    return FALSE;
   }
 }

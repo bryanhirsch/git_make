@@ -81,7 +81,7 @@ class GitSubtree {
    *  Squash flag.
    */
   public function squash() {
-    return ($this->getSquash()) ? '--squash' : '';  
+    return ($this->getSquash()) ? '--squash' : '';
   }
 
   /**
