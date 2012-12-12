@@ -72,9 +72,9 @@ function drush_git_make($makefile, $build_path = 'docroot') {
    // - apply patch to create sites/default, profiles/standard, modules/README
 
  // TODO Support merge options in .make:
-   // project[example][git-subtree][merge][squash] = TRUE (default)
-   // project[example][git-subtree][merge][squash] = FALSE
-   // project[example][git-subtree][message] = 'Some message'
+   // project[example][download][type] = 'git-subtree'
+   // project[example][download][squash] = TRUE
+   // project[example][download][message] = 'Some message'
 
   /* TODO @see drush_make
   // Support making just a portion of a make file.
@@ -270,8 +270,13 @@ drush_print(print_r($project));
 
   // "Core is built in place, rather than using make-process."
   if (isset($projects['core'])) {
+    // If download type is not 'git-subtree', just checkout the designated release
+    // and commit
+    // TODO git_make_checkout_index('core', $info, $projects['core']['drupal']);
+
+    // If download type is 'git-subtree', get the subtree.
     git_make_get_subtree('core', $info, $projects['core']['drupal']);
-// drush_print(print_r($projects['core']['drupal']));
+
     // TODO
     // If there are patches download and apply patches.
   }
@@ -280,6 +285,12 @@ drush_print(print_r($project));
   if (isset($projects['contrib'])) {
     foreach ($projects['contrib'] as $project) {
       // TODO Consider using drush_backend for something here, like make_projects()?
+
+      // If download type is not 'git-subtree', just checkout the designated release
+      // and commit
+      // TODO git_make_checkout_index($type, $info, $project);
+
+      // If download type is 'git-subtree', get the subtree.
 
       git_make_get_subtree($type, $info, $project);
       // TODO
@@ -672,7 +683,7 @@ function git_make_get_id_from_branch($repo, $branch) {
  */
 function git_make_get_subtree($type, $info, $project) {
   // Determine subtree repo "prefix".
-  $prefix = git_make_prefix($type, $project);
+  $prefix = git_make_get_prefix($project['name']);
 
   // Get path to local copy of the project's git repo. Clone or update if needed.
   $repo = git_make_get_local_repo($project);
@@ -696,7 +707,7 @@ function git_make_get_subtree($type, $info, $project) {
                                 $branch, $root);
 
   // TODO
-  // Recursion(?).
+  // Recursion(?). Recursion probably shouldn't be an option for git-make.
 
   if (!is_dir($prefix)) {
     // If the project doesn't exist in the repo yet, add it.
@@ -736,18 +747,15 @@ function git_make_get_subtree($type, $info, $project) {
 }
 
 /**
- * Build prefix path to pass to git subtree.
- *
- * This will be used as the --prefix option like this:
- *   git subtree add --prefix=docroot/sites/all/modules <repo> <branch>
+ * Build standard drupal project path.
  *
  * Note: You HAVE to build from the top-level directory with git-make.
- * Assuming Drupal docroot is always a subtree of some parent repo.
+ * Assuming Drupal docroot is always a child or subtree of some parent repo.
  *
  * @return
- *   String. git subtree --prefix value.
+ *   String. path/to/project
  */
-function git_make_prefix($type, $project) {
+function git_make_get_project_path($type, $project) {
   // E.g. $prefix = docroot
   $build_path = $project['build_path'];
   $prefix = $build_path;
@@ -777,6 +785,25 @@ function git_make_prefix($type, $project) {
   }
 
   return $prefix;
+}
+
+
+/**
+ * Build prefix path to pass to git subtree.
+ *
+ * This will be used as the --prefix option like this:
+ *   git subtree add --prefix=project/project-name <repo> <branch>
+ *
+ * Note: You HAVE to build from the top-level directory with git-make.
+ * Assuming Drupal docroot is always a subtree of some parent repo.
+ *
+ * @param string $name
+ *
+ * @return
+ *   String. git subtree --prefix value.
+ */
+function git_make_get_prefix($name) {
+  return sprintf('project/%s', $name);
 }
 
 /**
@@ -873,4 +900,19 @@ function git_make_get_tag($project) {
   }
 
   return $tag;
+}
+
+/**
+ * @param $type
+ *  String. core, contrib.
+ *
+ * @param $info
+ *  Array. Parsed make file.
+ *
+ * @param $project
+ *  Array. The project for which we're getting a subtree.
+ */
+function git_make_checkout_index($type, $info, $project) { 
+  // git rm -r projects/$project
+  // cd .drush-repos/$project; git checkout $tag;  git checkout-index -a -f /path/to/projects/$project
 }
