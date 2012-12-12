@@ -162,7 +162,7 @@ function git_make_make_projects($recursion = FALSE, $contrib_destination, $info,
       // on drupal.org in a Git repo.
       $project['download']['type'] = 'git';
     }
-    else if ($project['download']['type'] != 'git') {
+    else if ($project['download']['type'] != 'git' && $project['download']['type'] != 'git-subtree') {
       // If download is specifiec as something other than git, this isn't
       // going to work.
       $type = $project['download']['type'];
@@ -270,15 +270,22 @@ drush_print(print_r($project));
 
   // "Core is built in place, rather than using make-process."
   if (isset($projects['core'])) {
-    // If download type is not 'git-subtree', just checkout the designated release
-    // and commit
-    // TODO git_make_checkout_index('core', $info, $projects['core']['drupal']);
-
     // If download type is 'git-subtree', get the subtree.
-    git_make_get_subtree('core', $info, $projects['core']['drupal']);
+    if (git_make_download_type_is_subtree($projects['core']['drupal'])) {
+      git_make_get_subtree('core', $info, $projects['core']['drupal']);
+    }
+    // If download type is not 'git-subtree', just checkout and commit.
+    else {
+      git_make_checkout_index('core', $info, $projects['core']['drupal']);
+    }
 
     // TODO
     // If there are patches download and apply patches.
+
+    // Make symlink to project inside docroot.
+    $path = git_make_get_project_path('core', $project);
+    // TODO Add symlink.
+
   }
 
   // Process all projects.
@@ -286,17 +293,28 @@ drush_print(print_r($project));
     foreach ($projects['contrib'] as $project) {
       // TODO Consider using drush_backend for something here, like make_projects()?
 
-      // If download type is not 'git-subtree', just checkout the designated release
-      // and commit
-      // TODO git_make_checkout_index($type, $info, $project);
-
       // If download type is 'git-subtree', get the subtree.
+      if (git_make_download_type_is_subtree($project)) {
+        git_make_get_subtree($type, $info, $project);
+      }
+      // If download type is not 'git-subtree', just checkout and commit.
+      else {
+        git_make_checkout_index($type, $info, $project);
+      }
 
-      git_make_get_subtree($type, $info, $project);
       // TODO
       // If there are patches download and apply patches.
+
+      // Make symlink to project inside docroot.
+      $path = git_make_get_project_path($type, $project);
+      // TODO Add symlink.
     }
   }
+
+  // Garbage collection.
+  $command = 'git gc';
+  _git_make_exec($command);
+
   return TRUE;
   // */
 }
@@ -718,7 +736,7 @@ function git_make_get_subtree($type, $info, $project) {
     $command = 'git gc';
     _git_make_exec($command);
   }
-  if (is_dir($prefix)) {
+  else if (is_dir($prefix)) {
     // TODO Add error handling. E.g. Path can exist but not be a subtree if someone
     //   ran drush make by itself or added the project manually.
     $command = $git_subtree->pull();
@@ -803,7 +821,7 @@ function git_make_get_project_path($type, $project) {
  *   String. git subtree --prefix value.
  */
 function git_make_get_prefix($name) {
-  return sprintf('project/%s', $name);
+  return sprintf('projects/%s', $name);
 }
 
 /**
@@ -913,6 +931,77 @@ function git_make_get_tag($project) {
  *  Array. The project for which we're getting a subtree.
  */
 function git_make_checkout_index($type, $info, $project) { 
-  // git rm -r projects/$project
-  // cd .drush-repos/$project; git checkout $tag;  git checkout-index -a -f /path/to/projects/$project
+  $commands = array();
+
+  // Get path to local copy of the project's git repo. Clone or update if needed.
+  $repo = git_make_get_local_repo($project);
+
+  // Get tag or commit ID for project version.
+  if (!$tag = git_make_get_tag($project)) {
+    $commit_id = git_make_get_id($info['core'], $project, $repo);
+  }
+  
+  // Set commit message.
+  $timestamp = time();
+  $message = sprintf('drush git-make updated %s to %s, %s', 
+                       $project['name'],
+                       ($tag) ? $tag : $commit_id,
+                       date('Y-m-d, H:i', $timestamp));
+  
+  // Top-level directory in git repo.
+  $root = getcwd();
+
+  // Project prefix.
+  $prefix = git_make_get_prefix($project['name']);
+
+  // If the project already exists, remove it.
+  if (is_dir($prefix)) {
+    $commands[] = sprintf('git rm -r %s/%s', $root, $prefix);
+  }
+
+  // Checkout the verision of the project specified in the make file.
+  $commands[] = sprintf('cd %s; git checkout %s; git checkout-index -a -f --prefix=%s/%s/ ;',
+                            $repo,
+                            ($tag) ? $tag : $commit_id,
+                            $root,
+                            $prefix
+  );
+
+  // Add version to info file.
+  $text = sprintf("\n; Information added by git_make on %s\n"
+                . "version = %s\n"
+                . "project = %s\n"
+                . "datestamp =  %s\n",
+                date('Y-m-d', $timestamp), 
+                ($tag) ? $tag : $commit_id,
+                $project['name'], 
+                $timestamp);
+  $commands[] = sprintf('echo "%s" >> %s/%s/%s.info', $text, $root, $prefix, $project['name']);
+
+  // Stage changes.
+  $commands[] = sprintf('git add %s/%s', $root, $prefix);
+
+  // Commit.
+  $commands[] = sprintf('git commit -m "%s"', $message);
+
+  // Execute.
+  foreach ($commands as $command) {
+    _git_make_exec($command);
+  }
+
+  drush_log($message);
+}
+
+/**
+ * @param array $project
+ * 
+ * @return boolean
+ */
+function git_make_download_type_is_subtree($project) {
+  if (!empty($project['download']) && $project['download']['type'] == 'git-subtree') {
+    return TRUE;  
+  }  
+  else {
+    return FALSE;  
+  }
 }
