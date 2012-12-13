@@ -283,9 +283,9 @@ drush_print(print_r($project));
     // If there are patches download and apply patches.
 
     // Make symlink to project inside docroot.
-    $path = git_make_get_project_path('core', $project);
-    // TODO Add symlink.
-
+    $path = git_make_get_project_path('core', $projects['core']['drupal']);
+    $command = git_make_add_symlink($path, $projects['core']['drupal']['name'], TRUE);
+    _git_make_exec($command);
   }
 
   // Process all projects.
@@ -307,7 +307,8 @@ drush_print(print_r($project));
 
       // Make symlink to project inside docroot.
       $path = git_make_get_project_path($type, $project);
-      // TODO Add symlink.
+      $command = git_make_add_symlink($path, $project['name']);
+      _git_make_exec($command);
     }
   }
 
@@ -528,13 +529,15 @@ function git_make_local_repo_exists($repo) {
 /**
  * Get a local copy of the project's git repo.
  *
- * @param $project
- *  Array
+ * @param array $project
+ *
+ * @param boolean $checkout
+ *  Checkout branch.
  *
  * @return $repo
  *  String /path/to/repo.
  */
-function git_make_get_local_repo($project) {
+function git_make_get_local_repo($project, $checkout = TRUE) {
   $name = $project['name'];
   $url = git_make_download_url($project);
 
@@ -580,9 +583,11 @@ function git_make_get_local_repo($project) {
   // This just seems like the easiest way to handle all scenarios.
   // While we're here do some garbage collection for good measure.
   // @todo Add an option to skip gc;
-  $branch = git_make_get_branch($project);
-  $command = sprintf('cd %s; git checkout %s; git gc;', $repo, $branch);
-  _git_make_exec($command);
+  if ($checkout) {
+    $branch = git_make_get_branch($project);
+    $command = sprintf('cd %s; git checkout %s; git gc;', $repo, $branch);
+    _git_make_exec($command);
+  }
 
   return $repo;
 }
@@ -715,8 +720,9 @@ function git_make_get_subtree($type, $info, $project) {
   // Set commit message.
   $message = sprintf('drush git-make executed: %s', date('Y-m-d, H:i', time()));
 
-  // TODO Add a drush option here to opt out of --squash.
-  $squash = TRUE;
+  // TODO Add a drush option for --squash TRUE.
+  // TODO Why isn't this bringing in full history?
+  $squash = FALSE;
 
   // Top-level directory in git repo.
   $root = getcwd();
@@ -755,6 +761,24 @@ function git_make_get_subtree($type, $info, $project) {
   $command = $git_subtree->merge();
   _git_make_exec($command);
   drush_log("Merged project " . $project['name'] . " (version $tag)");
+
+  // Add project info to info file.
+  // @todo Probably don't want to add info to subtree projects. Otherwise this
+  //   will get committed and pushed up to d.o, which will be annoying.
+  //   Should there be a drush option for people who want to add info here
+  //   for some reason?...
+  /*
+  $revision = ($tag) ? $tag : $commit_id;
+  $commands = array();
+  $commands[] = git_make_append_project_info($revision, $project['name'], $root, $prefix);
+  $commands[] = sprintf('git add %s/%s.info; git commit -m "%s"',
+    $prefix, $project['name'], 'Added project info. By drush git-make.'
+  );
+  foreach ($commands as $command) {
+    _git_make_exec($command);
+  }
+  // */
+
 
   // Do Git garbage collection, otherwise this repo can become pretty slow.
   // @todo Add an option to ignore garbage collection.
@@ -934,18 +958,19 @@ function git_make_checkout_index($type, $info, $project) {
   $commands = array();
 
   // Get path to local copy of the project's git repo. Clone or update if needed.
-  $repo = git_make_get_local_repo($project);
+  $repo = git_make_get_local_repo($project, FALSE);
 
   // Get tag or commit ID for project version.
   if (!$tag = git_make_get_tag($project)) {
     $commit_id = git_make_get_id($info['core'], $project, $repo);
   }
+  $revision = ($tag) ? $tag : $commit_id;
 
   // Set commit message.
   $timestamp = time();
   $message = sprintf('drush git-make updated %s to %s, %s',
                        $project['name'],
-                       ($tag) ? $tag : $commit_id,
+                       $revision,
                        date('Y-m-d, H:i', $timestamp));
 
   // Top-level directory in git repo.
@@ -962,20 +987,12 @@ function git_make_checkout_index($type, $info, $project) {
   // Checkout the verision of the project specified in the make file.
   $commands[] = sprintf('cd %s; git checkout %s; git checkout-index -a -f --prefix=%s/%s/ ;',
                             $repo,
-                            ($tag) ? $tag : $commit_id,
+                            $revision,
                             $root,
                             $prefix
   );
 
-  // Add version to info file.
-  $text = sprintf("\n; Information added by git_make on %s\n"
-                . "version = %s\n"
-                . "project = %s\n"
-                . "datestamp =  %s\n",
-                date('Y-m-d', $timestamp),
-                ($tag) ? $tag : $commit_id,
-                $project['name'],
-                $timestamp);
+  $commands[] = git_make_append_project_info($revision, $project['name'], $root, $prefix);
   $commands[] = sprintf('echo "%s" >> %s/%s/%s.info', $text, $root, $prefix, $project['name']);
 
   // Stage changes.
@@ -1004,4 +1021,170 @@ function git_make_download_type_is_subtree($project) {
   else {
     return FALSE;
   }
+}
+
+/**
+ * @return string
+ *  Statement to append project info to project info file.
+ */
+function git_make_append_project_info($revision, $name, $root, $prefix) {
+  // Add version to info file.
+  $timestamp = time();
+  $text = sprintf("\n; Information added by git_make on %s\n"
+                . "version = %s\n"
+                . "project = %s\n"
+                . "datestamp =  %s\n",
+                date('Y-m-d', $timestamp),
+                $revision,
+                $name,
+                $timestamp);
+
+  $command = sprintf('echo "%s" >> %s/%s/%s.info', $text, $root, $prefix, $name);
+
+  return $command;
+}
+
+/**
+ * @param string $path
+ *   Drupal's expected path/to/project
+ *
+ * @param string $name
+ *  Project name
+ *
+ * @param boolean $is_core
+ *
+ * @return string $command
+ *  To be executed via shell_exec()
+ */
+function git_make_add_symlink($path, $name, $is_core = FALSE) {
+  $command = '';
+
+  // @todo Make name of docroot customizeable.
+  if ($is_core && _git_make_add_docroot('docroot')) {
+    $command .= _git_make_add_core_symlinks();
+    $command .= _git_make_remove_core_symlinks();
+    $command .= _git_make_add_core_directories($path, $name); // TODO
+  }
+  else {
+    $command .= _git_make_add_symlink($path, $name);
+  }
+
+  return $command;
+}
+
+/**
+ * @param string $path
+ *   Drupal's expected path/to/project
+ *
+ * @param string $name
+ *  Project name
+ *
+ * @param boolean $is_core
+ *
+ * @return string $command
+ *  To be executed via shell_exec()
+ */
+function _git_make_add_symlink($path, $name) {
+  $command = '';
+
+  // Change directories to where the symlink should be placed.
+  $end = strrpos($path, '/');
+  $go_here = substr($path, 0, $end);
+  // Make sure "here" exists.
+  if (!is_dir($go_here)) {
+    $command .= sprintf('mkdir -p %s; ', $go_here);
+  }
+  $command .= "cd $go_here; ";
+
+  // Get the relative path to the project.
+  $parts = explode('/', $go_here);
+  $relative_path = '';
+  foreach ($parts as $part) {
+    $relative_path .= '../';
+  }
+  // Get prefix (path to the project from top-level directory).
+  $prefix = git_make_get_prefix($name);
+  $relative_path .= $prefix;
+
+  $command .= sprintf('ln -s %s %s;', $relative_path, $name);
+
+  return $command;
+}
+
+/**
+ * @param string $docroot
+ *   Name of root Drupal directory.
+ *
+ * @return boolean
+ *  Success / Failure.
+ */
+function _git_make_add_docroot($docroot = 'docroot') {
+  if (!is_dir($docroot)) {
+    $result = mkdir('docroot', 0755);
+    // @todo Add error handling if mkdir fails.
+  }
+  else {
+    return TRUE;
+  }
+
+  return $result;
+}
+
+/**
+ * Add symlinks to files and directories inside Drupal root.
+ *
+ * @return string $command
+ *  To be executed via shell_exec()
+ */
+function _git_make_add_core_symlinks() {
+  // Default: 'cd docroot; ln -s ../project/drupal/* ./ ;';
+  $prefix = git_make_get_prefix('drupal');
+  $path = sprintf('../%s', $prefix);
+  $command = sprintf('cd docroot; ln -s %s/* ./ ; ', $path);
+
+  return $command;
+}
+
+/**
+ * Remove symlinks to drupal/sites and drupal/profiles.
+ *
+ * @return string $command
+ *  To be executed via shell_exec()
+ */
+function _git_make_remove_core_symlinks() {
+  $command = '';
+
+  // cd into docroot.
+  $command .= 'cd docroot; ';
+
+  // Remove symlink to ../projects/drupal/sites
+  $command .= 'rm sites; ';
+
+  // TODO Only remove symlink to profiles if a profile project is detected in .make file.
+  // Remove symlink to ../projects/drupal/profiles.
+  $command .= 'rm profiles; ';
+
+  return $command;
+}
+
+/**
+ * Add docroot/sites/README and docroot/profiles/README.
+ *
+ * @return string $command
+ *  To be executed via shell_exec()
+ */
+function _git_make_add_core_directories() {
+  $command = '';
+
+  // Create sites/README.txt;
+  $command .= 'mkdir sites; echo "@todo see _git_make_remove_core_symlinks()" >> sites/README.txt ; ';
+  $command .= 'git add sites/README.txt ; git commit -m "Add docroot/sites/README.txt by git-make."; ';
+
+  // TODO Only do this if there's a profile in the make file (that is, if
+  //   the symlink to ../projects/drupal/profiles was removed).
+  // Create profiles/README.txt;
+  $command .= 'mkdir profiles; echo "@todo see _git_make_remove_core_symlinks()" >> profiles/README.txt ; ';
+  $command .= 'git add sites/README.txt ; git commit -m "Add docroot/profiles/README.txt by git-make."; ';
+
+  return $command;
 }
