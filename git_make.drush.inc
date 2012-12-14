@@ -263,23 +263,28 @@ function git_make_make_projects($recursion = FALSE, $contrib_destination, $info,
     }
   }
 
+  $git_make = new GitMake($info, $contrib_destination);
+
   // "Core is built in place, rather than using make-process."
   if (isset($projects['core'])) {
     // If download type is 'git-subtree', get the subtree.
-    if (git_make_download_type_is_subtree($projects['core']['drupal'])) {
+    if ($git_make->downloadTypeIsSubtree($projects['core']['drupal'])) {
       git_make_get_subtree('core', $info, $projects['core']['drupal']);
     }
     // If download type is not 'git-subtree', just checkout and commit.
     else {
-      git_make_checkout_index('core', $info, $projects['core']['drupal']);
+      $git_make->checkoutIndex('core', $info, $projects['core']['drupal']);
     }
 
     // TODO
     // If there are patches download and apply patches.
 
     // Make symlink to project inside docroot.
-    $path = git_make_get_project_path('core', $projects['core']['drupal']);
-    $command = git_make_add_symlink($path, $projects['core']['drupal']['name'], TRUE);
+    $path = $git_make->getProjectPath('core', $projects['core']['drupal']);
+    $command = $git_make->addSymlink($path, $projects['core']['drupal']['name'], TRUE);
+    // Commit symlinks.
+    $command .= $git_make->commitSymlinks(TRUE);
+
     _git_make_exec($command);
   }
 
@@ -289,22 +294,25 @@ function git_make_make_projects($recursion = FALSE, $contrib_destination, $info,
       // TODO Consider using drush_backend for something here, like make_projects()?
 
       // If download type is 'git-subtree', get the subtree.
-      if (git_make_download_type_is_subtree($project)) {
+      if ($git_make->downloadTypeIsSubtree($project)) {
         git_make_get_subtree($type, $info, $project);
       }
       // If download type is not 'git-subtree', just checkout and commit.
       else {
-        git_make_checkout_index($type, $info, $project);
+        $git_make->checkoutIndex($type, $info, $project);
       }
 
       // TODO
       // If there are patches download and apply patches.
 
       // Make symlink to project inside docroot.
-      $path = git_make_get_project_path($type, $project);
-      $command = git_make_add_symlink($path, $project['name']);
+      $path = $git_make->getProjectPath($type, $project);
+      $command = $git_make->addSymlink($path, $project['name']);
       _git_make_exec($command);
     }
+    // Commit all project symlinks.
+    $command = $git_make->commitSymlinks();
+    _git_make_exec($command);
   }
 
   // Garbage collection.

@@ -15,23 +15,10 @@ class GitMake {
   private $message;
   private $root;
 
-  public function __construct(/*$prefix,
-                               $repo = '',
-                               $commit_id = '',
-                               $message = '',
-                               $squash = TRUE,
-                               $branch = '', // */
-                               ) { 
-    /*
-    $this->setPrefix($prefix);
-    $this->setRepo($repo);
-    $this->setCommit_id($commit_id);
-    $this->setMessage($message);
-    $this->setSquash($squash);
-    $this->setBranch($branch);
-    // */
+  public function __construct($info, $contrib_destination = 'sites/all/modules') { 
+    $this->setInfo($info);
+    $this->setContribDestination($contrib_destination);
     $this->setRoot();
-
   }
 
   /**
@@ -42,6 +29,8 @@ class GitMake {
   /**
    * sets ========================================================================
    */
+  public function setInfo($info) { $this->info = $info; }
+  public function setContribDestination($contrib_destination = 'sites/all/modules') { $this->contrib_destination = $contrib_destination; }
   public function setRoot() { $this->root = getcwd(); }
 
   /**
@@ -411,7 +400,10 @@ class GitMake {
      * @param $project
      *  Array. The project for which we're getting a subtree.
      */
-    static public function checkoutIndex($type, $info, $project) {
+    // TODO get $info from $this
+    // TODO get $project from $this ?
+    // TODO get $type from $this ?
+    public function checkoutIndex($type, $info, $project) {
       $commands = array();
 
       // Get path to local copy of the project's git repo. Clone or update if needed.
@@ -471,7 +463,7 @@ class GitMake {
      *
      * @return boolean
      */
-    static public function downloadTypeIsSubtree($project) {
+    public function downloadTypeIsSubtree($project) {
       if (!empty($project['download']) && $project['download']['type'] == 'git-subtree') {
         return TRUE;
       }
@@ -513,14 +505,14 @@ class GitMake {
      * @return string $command
      *  To be executed via shell_exec()
      */
-    static public function addSymlink($path, $name, $is_core = FALSE) {
+    public function addSymlink($path, $name, $is_core = FALSE) {
       $command = '';
 
       // @todo Make name of docroot customizeable.
       if ($is_core && _git_make_add_docroot('docroot')) {
         $command .= _git_make_add_core_symlinks();
         $command .= _git_make_remove_core_symlinks();
-        $command .= _git_make_add_core_directories($path, $name); // TODO
+        $command .= _git_make_add_core_directories($path, $name);
       }
       else {
         $command .= _git_make_add_symlink($path, $name);
@@ -623,6 +615,26 @@ class GitMake {
 
       return $command;
     }
+
+    /**
+     * @param boolean $is_core
+     *
+     * @return string $command
+     *  Statement to be executed to commit symlinks.
+     */
+    public function commitSymlinks($is_core = FALSE) {
+      $command = 'cd docroot; git add . ; ';
+
+      if ($is_core) {
+        $command .= 'git commit -m "Add symlinks to Drupal core."; ';
+      }
+      else {
+        $command .= 'git commit -m "Add symlinks to projects."; ';
+      }
+
+      return $command;
+    }
+    
 
     /**
      * Add docroot/sites/README and docroot/profiles/README.
