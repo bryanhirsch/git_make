@@ -22,11 +22,6 @@ class GitMake {
   }
 
   /**
-   * gets ========================================================================
-   */
-  //public function getPrefix() { if ($this->prefix) { return $this->prefix; } else { return ''; }}
-
-  /**
    * sets ========================================================================
    */
   public function setInfo($info) { $this->info = $info; }
@@ -34,30 +29,7 @@ class GitMake {
   public function setRoot() { $this->root = getcwd(); }
 
   /**
-   * @param string $command
-   *  (Optional) git-subtree command being executed.
-   *
-   * @return string
-   *  Custom commit message.
-   */
-  public function message($command = FALSE) {
-    /*
-    if ($command) {
-      if ($message = $this->getMessage()) {
-        $message = sprintf("%s\n\tgit subtree %s", $message, $command);
-      }
-      else {
-        $message = "git subtree $command";
-      }
-      $this->setMessage($message);
-    }
-
-   return ($this->getMessage()) ? sprintf('--message="%s"', $this->message) : '';
-   // */
-  }
-
-  /**
-   * @param array $project
+   * @param array $name
    *
    * @return string $url
    *  URL of git repo.
@@ -110,7 +82,7 @@ class GitMake {
    */
   public function getLocalRepo($project, $checkout = TRUE) {
     $name = $project['name'];
-    $url = git_make_download_url($project);
+    $url = GitMake::getDownloadUrl($project);
 
     // Check for local copy of project repo. If it doesn't exist
     // put it here: .drush/repos/$name. If it does exist, try to
@@ -128,7 +100,7 @@ class GitMake {
     }
     $repo = sprintf("%s/%s", $repos, $name);
     $use_local = drush_get_option('local');
-    $repo_exists = git_make_local_repo_exists($repo);
+    $repo_exists = GitMake::localRepoExists($repo);
 
     if ($repo_exists && $use_local) {
       // Use local checkout of repo as-is. Do nothing here.
@@ -155,7 +127,7 @@ class GitMake {
     // While we're here do some garbage collection for good measure.
     // @todo Add an option to skip gc;
     if ($checkout) {
-      $branch = git_make_get_branch($project);
+      $branch = GitMake::getBranch($project);
       $command = sprintf('cd %s; git checkout %s; git gc;', $repo, $branch);
       _git_make_exec($command);
     }
@@ -183,7 +155,7 @@ class GitMake {
 
       // Get path to local repo if we don't already know it.
       if (!$repo) {
-        $repo = git_make_get_local_repo($project);
+        $repo = GitMake::getLocalRepo($project);
       }
 
       // If make file designates a git commit ID, that's all we need.
@@ -192,22 +164,22 @@ class GitMake {
         $id = $revision;
       }
       // Get the commit ID based on the tag specified in the make file.
-      else if ($tag = git_make_get_tag($project)) {
-        $id = git_make_get_id_from_tag($repo, $tag);
+      else if ($tag = GitMake::getTag($project)) {
+        $id = GitMake::getIdFromTag($repo, $tag);
       }
       // Get the commit ID based on the release version specified in
       // the make file.
-      else if ($version = git_make_get_version($project)) {
+      else if ($version = GitMake::getVersion($project)) {
         // If the project is following Drupal tagging conventions we should
         // be able to figure out the tag we're looking for.
         $tag = ($project['name'] == 'drupal') ? $version : sprintf('%s-%s', $core, $version);
-        $id = git_make_get_id_from_tag($repo, $tag);
+        $id = GitMake::getIdFromTag($repo, $tag);
       }
       // No version is specified in the make file, but a branch is specified,
       // use that.
-      else if ($branch = git_make_get_branch($project)) {
+      else if ($branch = GitMake::getBranch($project)) {
         // Find out the commit ID at the tip of $branch.
-        $id = git_make_get_id_from_branch($repo, $branch);
+        $id = GitMake::getIdFromBranch($repo, $branch);
       }
       /*
       // Try to get $id based on recommended version on drupal.org.
@@ -360,7 +332,7 @@ class GitMake {
      * @return string
      *   Project version. E.g. 5.1 for Zen 7.x-5.1.
      *
-     * @see git_make_get_tag
+     * @see GitMake::getTag
      */
     static public function getVersion($project) {
       return (!empty($project['version'])) ? $project['version'] : FALSE;
@@ -383,7 +355,7 @@ class GitMake {
         $tag = $project['download']['tag'];
       }
       // If a version like 5.1 is given for a project like Zen 7.x-5.1, build the tag.
-      else if ($version = git_make_get_version($project)) {
+      else if ($version = GitMake::getVersion($project)) {
         $tag = ($project['name'] == 'drupal') ? $version : sprintf('%s-%s', $project['core'], $version);
       }
 
@@ -407,11 +379,11 @@ class GitMake {
       $commands = array();
 
       // Get path to local copy of the project's git repo. Clone or update if needed.
-      $repo = git_make_get_local_repo($project, FALSE);
+      $repo = GitMake::getLocalRepo($project, FALSE);
 
       // Get tag or commit ID for project version.
-      if (!$tag = git_make_get_tag($project)) {
-        $commit_id = git_make_get_id($info['core'], $project, $repo);
+      if (!$tag = GitMake::getTag($project)) {
+        $commit_id = GitMake::getId($info['core'], $project, $repo);
       }
       $revision = ($tag) ? $tag : $commit_id;
 
@@ -426,7 +398,7 @@ class GitMake {
       $root = getcwd();
 
       // Project prefix.
-      $prefix = git_make_get_prefix($project['name']);
+      $prefix = GitMake::getPrefix($project['name']);
 
       // If the project already exists, remove it.
       if (is_dir($prefix)) {
@@ -441,7 +413,7 @@ class GitMake {
                                 $prefix
       );
 
-      $commands[] = git_make_append_project_info($revision, $project['name'], $root, $prefix);
+      $commands[] = GitMake::appendProjectInfo($revision, $project['name'], $root, $prefix);
       $commands[] = sprintf('echo "%s" >> %s/%s/%s.info', $text, $root, $prefix, $project['name']);
 
       // Stage changes.
@@ -509,13 +481,13 @@ class GitMake {
       $command = '';
 
       // @todo Make name of docroot customizeable.
-      if ($is_core && _git_make_add_docroot('docroot')) {
-        $command .= _git_make_add_core_symlinks();
-        $command .= _git_make_remove_core_symlinks();
-        $command .= _git_make_add_core_directories($path, $name);
+      if ($is_core && GitMake::_addDocroot('docroot')) {
+        $command .= GitMake::_addCoreSymlinks();
+        $command .= GitMake::_removeCoreSymlinks();
+        $command .= GitMake::_addCoreDirectories($path, $name);
       }
       else {
-        $command .= _git_make_add_symlink($path, $name);
+        $command .= GitMake::_addSymlink($path, $name);
       }
 
       return $command;
@@ -552,7 +524,7 @@ class GitMake {
         $relative_path .= '../';
       }
       // Get prefix (path to the project from top-level directory).
-      $prefix = git_make_get_prefix($name);
+      $prefix = GitMake::getPrefix($name);
       $relative_path .= $prefix;
 
       $command .= sprintf('ln -s %s %s;', $relative_path, $name);
@@ -587,7 +559,7 @@ class GitMake {
      */
     static public function _addCoreSymlinks() {
       // Default: 'cd docroot; ln -s ../project/drupal/* ./ ;';
-      $prefix = git_make_get_prefix('drupal');
+      $prefix = GitMake::getPrefix('drupal');
       $path = sprintf('../%s', $prefix);
       $command = sprintf('cd docroot; ln -s %s/* ./ ; ', $path);
 
@@ -646,13 +618,13 @@ class GitMake {
       $command = '';
 
       // Create sites/README.txt;
-      $command .= 'mkdir sites; echo "@todo see _git_make_remove_core_symlinks()" >> sites/README.txt ; ';
+      $command .= 'mkdir sites; echo "@todo see GitMake::_removeCoreSymlinks()" >> sites/README.txt ; ';
       $command .= 'git add sites/README.txt ; git commit -m "Add docroot/sites/README.txt by git-make."; ';
 
       // TODO Only do this if there's a profile in the make file (that is, if
       //   the symlink to ../projects/drupal/profiles was removed).
       // Create profiles/README.txt;
-      $command .= 'mkdir profiles; echo "@todo see _git_make_remove_core_symlinks()" >> profiles/README.txt ; ';
+      $command .= 'mkdir profiles; echo "@todo see GitMake::_removeCoreSymlinks()" >> profiles/README.txt ; ';
       $command .= 'git add sites/README.txt ; git commit -m "Add docroot/profiles/README.txt by git-make."; ';
 
       return $command;
