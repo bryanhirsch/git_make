@@ -287,6 +287,49 @@ function git_make_make_projects($recursion = FALSE, $contrib_destination, $info,
 
     _git_make_exec($command);
   }
+  // Process all projects.
+  if (isset($projects['contrib'])) {
+    foreach ($projects['contrib'] as $project) {
+      // TODO Consider using drush_backend for something here, like make_projects()?
+
+      // If download type is 'git-subtree', get the subtree.
+      if ($git_make->downloadTypeIsSubtree($project)) {
+        git_make_get_subtree($type, $info, $project);
+      }
+      // If download type is not 'git-subtree', just checkout and commit.
+      else {
+        $git_make->checkoutIndex($type, $info, $project);
+      }
+
+      // TODO
+      // If there are patches download and apply patches.
+
+      // Make symlink to project inside docroot.
+      $path = $git_make->getProjectPath($type, $project);
+      $command = $git_make->addSymlink($path, $project['name']);
+      _git_make_exec($command);
+    }
+    // Commit all project symlinks.
+    $command = $git_make->commitSymlinks();
+    _git_make_exec($command);
+  }
+
+  // Garbage collection.
+  $command = 'git gc';
+  _git_make_exec($command);
+
+  return TRUE;
+  // */
+}
+
+/**
+ * Call this instead of Drush core's make_libraries().
+ *
+ * Use same signature as Drush make_libraries:
+ * @param $contrib_destination    TODO hard-coded NULL
+ * @param $info * @param $build_path */
+function git_make_make_libraries($contrib_destination = NULL, $info, $build_path) {
+  // TODO
 }
 
 /**
