@@ -8,6 +8,10 @@ Functional roadmap for version 1.0
 ====================================
 
  [x] Build a new distro from a Drush make file.
+   [x] core
+   [x] projects
+   [ ] patches
+   [ ] libraries
 
  [ ] Update a distro from a Drush make file.
 
