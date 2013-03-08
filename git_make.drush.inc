@@ -276,6 +276,11 @@ function git_make_make_projects($recursion = FALSE, $contrib_destination, $info,
       $git_make->checkoutIndex('core', $info, $projects['core']['drupal']);
     }
 
+    // TODO PATCH.
+    if (!empty($projects['core']['drupal']['patches'])) {
+      print_r($projects['core']['drupal']);
+    }
+
     // TODO
     // If there are patches download and apply patches.
 
@@ -303,6 +308,9 @@ function git_make_make_projects($recursion = FALSE, $contrib_destination, $info,
 
       // TODO
       // If there are patches download and apply patches.
+      if (!empty($project['patches'])) {
+        print_r($project);
+      }
 
       // Make symlink to project inside docroot.
       $path = $git_make->getProjectPath($type, $project);

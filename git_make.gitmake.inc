@@ -91,7 +91,10 @@ class GitMake {
     // TODO Add option for user to designate other location.
     // TODO Add option in make file to specify remote(s).
   //drush_print(print_r($_ENV));
-    $home = $_ENV['HOME'];
+    if (!$home = $_ENV['HOME']) {
+      // Try this if no environment variable for home is set.
+      $home = '~';  
+    }
     $repos = "$home/.drush-repos";
     if (!is_dir($repos)) {
       $mode = 0777;
@@ -527,7 +530,7 @@ class GitMake {
       $prefix = GitMake::getPrefix($name);
       $relative_path .= $prefix;
 
-      $command .= sprintf('ln -s %s %s;', $relative_path, $name);
+      $command .= sprintf('ln -s %s/ %s;', $relative_path, $name);
 
       return $command;
     }
