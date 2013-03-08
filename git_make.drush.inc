@@ -33,6 +33,7 @@ function git_make_drush_command() {
     'options' => array(
       'local' => 'Use local ("cached") copy of repos only.',
       'print-only' => 'Print commands, do not execute them.',
+      'home' => 'Pass a HOME directory, if your $_ENV variable isnt set.',
     ),
     'examples' => array(
       'drush git-make build-petition.make docroot' => '',

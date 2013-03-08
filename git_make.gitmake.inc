@@ -90,10 +90,12 @@ class GitMake {
     //
     // TODO Add option for user to designate other location.
     // TODO Add option in make file to specify remote(s).
-  //drush_print(print_r($_ENV));
-    if (!$home = $_ENV['HOME']) {
-      // Try this if no environment variable for home is set.
-      $home = '~';  
+    if (!$home = drush_get_option('home')) {
+      $home = $_ENV['HOME'];
+    }
+    if (!$home || strlen($home) < 1) {
+      drush_print("Sorry. Your \$_ENV['HOME'] isn't set. This is trouble. You can use --home.");
+      return;
     }
     $repos = "$home/.drush-repos";
     if (!is_dir($repos)) {
