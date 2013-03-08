@@ -95,7 +95,7 @@ class GitMake {
     }
     if (!$home || strlen($home) < 1) {
       drush_print("Sorry. Your \$_ENV['HOME'] isn't set. This is trouble. You can use --home.");
-      return;
+      exit;
     }
     $repos = "$home/.drush-repos";
     if (!is_dir($repos)) {
